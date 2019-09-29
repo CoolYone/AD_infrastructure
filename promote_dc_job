@@ -1,43 +1,115 @@
-#Set unrestricted execution policy
-Set-ExecutionPolicy Unrestricted -Confirm:$false
+#Check 
+
+
+#Password complex
+function checkpwcplx ($passwordString){  
+    $pwComplexity = 0  
+      
+    # checking the minimal length, if it's shorter, no need to continue  
+    if($passwordString.length -lt 10){  
+       return "length <10"  
+    }  
+   
+    # lowercase  
+    if($passwordString -cmatch "[a-z]"){  
+       $pwComplexity++  
+    }  
+   
+    # uppercase  
+    if($passwordString -cmatch "[A-Z]"){  
+       $pwComplexity++  
+    }  
+   
+    # digits  
+    if($passwordString -cmatch "[0-9]"){  
+       $pwComplexity++  
+    }  
+   
+   
+    # special character (not alphabetic characters or numbers)  
+    if($passwordString -cmatch "[^a-zA-Z0-9]"){  
+       $pwComplexity++  
+    }  
+   
+    # if 3 of the criterias      
+    if($pwComplexity -ge 3){  
+       return "complex"  
+    }  
+    else{  
+       return "NOT complex"  
+    }  
+ }  
+#Auto start script after restart 
+function Set-RunOnce
+{
+    [CmdletBinding()]
+    param
+    (
+        #The Name of the Registry Key in the Autorun-Key.
+        [string]
+        $KeyName = 'Run',
+
+        #Command to run
+        [string]
+        $Command = '%systemroot%\System32\WindowsPowerShell\v1.0\powershell.exe -executionpolicy bypass -file c:\Scripts\run1.ps1'
+  
+    ) 
+
+    
+    if (-not ((Get-Item -Path HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce).$KeyName ))
+    {
+        New-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name $KeyName -Value $Command -PropertyType ExpandString -ErrorAction Ignore
+    }
+    else
+    {
+        Set-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name $KeyName -Value $Command -PropertyType ExpandString -ErrorAction Ignore
+    }
+ 
+   
+}
+
+
+$item_ar = Get-ChildItem -Path c:\* -Recurse | ?{$_.name -like "Ren-rest-ins.ps1"} | select -First 1 | select name 
+
+[string]$comm_v = '%systemroot%\System32\WindowsPowerShell\v1.0\powershell.exe -executionpolicy bypass -file c:\Scripts\'+ $item_ar.Name
+
+Set-RunOnce -KeyName 'Run' -Command $comm_v
+
+#Remove script autorun 
+function Remove-RunOnce
+{
+    [CmdletBinding()]
+    param
+    (
+        #The Name of the Registry Key in the Autorun-Key.
+        [string]
+        $KeyName = 'Run'
+
+    ) 
+
+        Get-Item -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce' | Remove-ItemProperty -Name $KeyName
+    }
+   
+
+
+#Remove files 
+function remove-data 
+{
+
+Remove-Item -Path "$env:TEMP\*" -Recurse
+
+}
+                           
+
+$item_ar = Get-ChildItem -Path c:\* -Recurse | ?{$_.name -like "Ren-rest-ins.ps1"} | select -First 1 | select name 
+
+[string]$comm_v = '%systemroot%\System32\WindowsPowerShell\v1.0\powershell.exe -executionpolicy bypass -file c:\Scripts\'+ $item_ar.Name
+
+Set-RunOnce -KeyName 'Run' -Command $comm_v
 
 
 #Create a Stopwatch
 $stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
-
-
-## Create profile
-<#
-New-Item –Path $Profile –Type File –Force
-
-[string]$file_p  = $profile.Substring(0,39) + "test.txt"
-
-
-
-### Var
-[string]$file_lo  = $profile.Substring(0,39) + "log.txt"
-
-[string]$file_p  = $profile.Substring(0,39) + "test.txt"
-
-New-Item -ItemType file -Path $file_p 
-#>
-
-### Reaname server 
-<#
-$PlainPassword = "P@ssw0rd"
-$SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force
-$SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString | Out-File "$env:TMP\Password.txt"
-
-
-$Secure2 = Get-Content -Path "$env:TMP\Password.txt"| ConvertTo-SecureString
-
-$domname =  Get-Content -Path "$env:TMP\Dom_name.json" | ConvertFrom-Json
-
-$server_name =  Get-Content -Path "$env:TMP\servername.json" | ConvertFrom-Json
-
-$netname = Get-Content -Path "$env:TMP\netbios.json" | ConvertTo-SecureString
-
-#>
 
 workflow rename 
 {
@@ -56,23 +128,14 @@ Param (
 
     [string]$netname
 
-
   )
  
-
 
                inlinescript{
                             $server_name =  Get-Content -Path "$env:TMP\servername.json" | ConvertFrom-Json
 
-
-
                             Rename-Computer -NewName $server_name -Force -PassThru
-
-                            
                             }
-
-                            #Create a Stopwatch
-                            $stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
 
                             Restart-Computer -Wait
 
@@ -87,78 +150,70 @@ Param (
                             }
                           
                             Restart-Computer -Wait
-  <#
+
+               inlinescript {
                             $SecurePassword = Get-Content -Path "$env:TMP\Password.txt"| ConvertTo-SecureString
 
-                            $domname =  Get-Content -Path "$env:TMP\Dom_name.json" | ConvertFrom-Json
+                                             $domname =  Get-Content -Path "$env:TMP\Dom_name.json" | ConvertFrom-Json
 
-                            $netname = Get-Content -Path "$env:TMP\netbios.json" | ConvertFrom-Json
-                            #>
+                                                      $netname = Get-Content -Path "$env:TMP\netbios.json" | ConvertFrom-Json
+        
                             
-                            #New-Item -ItemType "file" -Path "$env:TEMP\InstADF.ps1" -Value '$SecurePassword = Get-Content -Path $env:TMP\Password.txt | ConvertTo-SecureString ; $domname = Get-Content -Path $env:TMP\Dom_name.json | ConvertFrom-Json ; $netname = Get-Content -Path $env:TMP\netbios.json | ConvertFrom-Json ; Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath C:\Windows\NTDS -DomainMode Default -DomainName $domname -DomainNetbiosName $netname -ForestMode Default -InstallDns:$true -LogPath C:\Windows\NTDS -NoRebootOnCompletion:$false -SafeModeAdministratorPassword $SecurePassword -SysvolPath C:\Windows\SYSVOL -Force:$true'
-              
-                          
-                            
-        inlinescript        {
-                            #powershell.exe -file "$env:TEMP\InstADF.ps1"
-
-                            powershell.exe -command $SecurePassword = Get-Content -Path $env:TMP\Password.txt | ConvertTo-SecureString ; $domname = Get-Content -Path $env:TMP\Dom_name.json | ConvertFrom-Json ; $netname = Get-Content -Path $env:TMP\netbios.json | ConvertFrom-Json ; Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath C:\Windows\NTDS -DomainMode Default -DomainName $domname -DomainNetbiosName $netname -ForestMode Default -InstallDns:$true -LogPath C:\Windows\NTDS -NoRebootOnCompletion:$false -SafeModeAdministratorPassword $SecurePassword -SysvolPath C:\Windows\SYSVOL -Force:$true
+                            New-Item -ItemType "file" -Path "$env:TEMP\InstADF.ps1" -Value '$SecurePassword = Get-Content -Path $env:TMP\Password.txt | ConvertTo-SecureString ; $domname = Get-Content -Path $env:TMP\Dom_name.json | ConvertFrom-Json ; $netname = Get-Content -Path $env:TMP\netbios.json | ConvertFrom-Json ; Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath C:\Windows\NTDS -DomainMode Default -DomainName $domname -DomainNetbiosName $netname -ForestMode Default -InstallDns:$true -LogPath C:\Windows\NTDS -NoRebootOnCompletion:$false -SafeModeAdministratorPassword $SecurePassword -SysvolPath C:\Windows\SYSVOL -Force:$true'
 
                             }
 
-                  
+               inlinescript {
 
-         inlinescript{
-                           $job_s = Get-Job -State Completed -Newest 1
-                           if($job_s -like "Completed")
-                           {
+                            powershell.exe -file "$env:TEMP\InstADF.ps1"
 
-                           Remove-Item -Path "$env:TMP\*" -Recurse
-
-                           }
-                           }
-
-      
-                            #Install-ADDSForest -DomainName $domname -CreateDNSDelegation  -SafeModeAdministratorPassword $SecurePassword -Confirm:$false
-     <#function InsADF {
-
-     $SecurePassword = Get-Content -Path "$env:TMP\Password.txt"| ConvertTo-SecureString
-
-                            $domname =  Get-Content -Path "$env:TMP\Dom_name.json" | ConvertFrom-Json
-
-                            $netname = Get-Content -Path "$env:TMP\netbios.json" | ConvertFrom-Json
-                            Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath C:\Windows\NTDS -DomainMode Default -DomainName $domname -DomainNetbiosName $netname -ForestMode Default -InstallDns:$true -LogPath C:\Windows\NTDS -NoRebootOnCompletion:$true -SafeModeAdministratorPassword $SecurePassword -SysvolPath C:\Windows\SYSVOL -Force:$true
-              }
-
-              InsADF #>
                             }
 
+                           }
+                           
+
+
                           
-                            
-                            
+ $item1 = Get-item -Path "$env:TMP\Password.txt" -ErrorAction Ignore | select name 
+                      
+if($item1 -eq $null)
+{
 
 
 
-
-Write-host "Woul you like enter prerequesite value (Default is No)" -ForegroundColor Yellow 
-    $Readhost = Read-Host " ( y / n ) " 
-    Switch ($ReadHost) 
-     { 
-       Y {Write-host "Yes"; $dom_prom=$true} 
-       N {Write-Host "No, cancel"; $dom_prom=$false} 
-       Default {Write-Host "Default"; $dom_prom=$false} 
+    Write-host "Would you like enter prerequesite value (Default is No)" -ForegroundColor Yellow 
+         $Readhost = Read-Host " ( y / n ) " 
+             Switch ($ReadHost) 
+                { 
+                   Y {Write-host "Yes"; $dom_prom=$true} 
+                   N {Write-Host "No, cancel"; $dom_prom=$false} 
+                   Default {Write-Host "Default"; $dom_prom=$false} 
+                }
      }
-
-     if($dom_prom -eq $true)
+     
+      if($dom_prom -eq $true)
      {
 
- $dom_name_1 = Read-Host "Enter domain name"
+        $dom_name_1 = Read-Host "Enter domain name, for exampl:'contoso.com'"
 
-  $net_bios = Read-Host "Enter netbios name"
+        $net_bios = Read-Host "Enter netbios name, for exampl:contoso"
 
-   $server_name = Read-Host "New server name"
+        $server_name = Read-Host "New server name, for exampl:dc1"
 
-     $PlainPassword = Read-Host "Enter SafeMode Administrator Password"
+        $PlainPassword = Read-Host "Enter SafeMode Administrator Password, password should be complex and not less than 10 symbols, and contain symbol:[A-Z], [a-z],[0-9]" 
+
+        $compl_p = checkpwcplx -passwordString $PlainPassword
+                    do
+                    {
+                    Write-Host "Password not complex, please enter complex password"
+                        
+                        $PlainPassword = Read-Host "Enter SafeMode Administrator Password"
+ 
+                                   $compl_p = checkpwcplx -passwordString $PlainPassword
+                    }while($compl_p -ne "complex")
+                    
+
+
 
         $SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force
             
@@ -191,10 +246,19 @@ Write-host "Woul you like enter prerequesite value (Default is No)" -ForegroundC
          Write-Progress -Activity "Restart server" -SecondsRemaining 10
 
 }
+
+$item1 = Get-item -Path "$env:TMP\Password.txt" | select name
+                      
+if($item1 -ne $null)
+{
+Write-Host "Credentials already exist"
+
+$dom_prom = $false
+}
 if($dom_prom -eq $false)
 {
 
-Write-host "Woul you like promote domain controller (Default is No)" -ForegroundColor Yellow 
+Write-host "Would you like promote domain controller (Default is No)" -ForegroundColor Yellow 
     $Readhost = Read-Host " ( y / n ) " 
     Switch ($ReadHost) 
      { 
@@ -202,7 +266,18 @@ Write-host "Woul you like promote domain controller (Default is No)" -Foreground
        N {Write-Host "No, cancel"; $dom_prom_1=$false} 
        Default {Write-Host "Default"; $dom_prom_1=$false} 
      }
+if($dom_prom_1 -eq $false)
+             {
 
+Remove-RunOnce -KeyName 'Run'
+
+remove-data
+
+sleep 3
+
+break
+
+}
 
 if($dom_prom_1 -eq $true)
 {
@@ -210,16 +285,16 @@ if($dom_prom_1 -eq $true)
 
 $job = Get-Job -State Suspended 
 
-if($job.state -like "Suspended")
-{
+                                               if($job.state -like "Suspended")
+                                                             {
 
-Write-host "Woul you like proceed job (Default is No)" -ForegroundColor Yellow 
+Write-host "Would you like proceed job (Default is No)" -ForegroundColor Yellow 
     $Readhost = Read-Host " ( y / n ) " 
     Switch ($ReadHost) 
      { 
        Y {Write-host "Yes, Restart server"; $job_r=$true} 
        N {Write-Host "No, cancel"; $job_r=$false} 
-       Default {Write-Host "Default, Skip restart"; $job_r=$false} 
+       Default {Write-Host "Default"; $job_r=$false} 
 
        
      }
@@ -241,8 +316,8 @@ Write-Progress -Activity "Job in progress" -Status "Status: $rez_l" -SecondsRema
 $stopWatch.Stop()
 
      }
-     if($job.state -eq $null)
-     {
+                             if($job.state -eq $null)
+                                       {
      if($job_r -eq $true)
      {
 
@@ -305,11 +380,6 @@ $stopWatch.Stop()
 }
 
 }       
-else
-{
-
-break
-
-}
+   
 }
 }
