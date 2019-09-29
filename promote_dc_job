@@ -1,4 +1,31 @@
-#Check 
+Write-Host -ForegroundColor Yellow "
+########################################################################################
+#                                                                                      #
+#This script will check system state, and proceed deploy Active Directory in new Forest#
+#                                                                                      #
+########################################################################################
+"
+
+
+
+
+#Create a Stopwatch
+$stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
+
+
+#Check system 
+Write-Host -ForegroundColor Yellow "Wait, system check in progress..."
+sleep 2
+$checkok = Get-WmiObject -Class Win32_NetworkAdapterConfiguration -Filter IPEnabled=TRUE
+
+if($checkok.DHCPEnabled -eq $true)
+{
+
+Write-Host -ForegroundColor Red "Please use static IP address, current network is configured for use DHCP"
+sleep 5
+break
+}
+
 
 
 #Password complex
@@ -190,9 +217,15 @@ if($item1 -eq $null)
                    Default {Write-Host "Default"; $dom_prom=$false} 
                 }
      }
+      if($dom_prom -eq $false)
+      {
+      Remove-RunOnce -KeyName 'Run'
+      sleep 1
+      break
+      }
      
       if($dom_prom -eq $true)
-     {
+      {
 
         $dom_name_1 = Read-Host "Enter domain name, for exampl:'contoso.com'"
 
@@ -288,7 +321,7 @@ $job = Get-Job -State Suspended
                                                if($job.state -like "Suspended")
                                                              {
 
-Write-host "Would you like proceed job (Default is No)" -ForegroundColor Yellow 
+Write-host "For proceeding job please type yes (Default is No)" -ForegroundColor Yellow 
     $Readhost = Read-Host " ( y / n ) " 
     Switch ($ReadHost) 
      { 
@@ -331,7 +364,7 @@ $job_stat = Get-Job -State Running
 if($job_stat.State -eq $null)
 {
 
-Write-host "Job not runned, would you like create job (Default is No)" -ForegroundColor Yellow 
+Write-host "Job not exist, please type yes for creating new job (Default is No)" -ForegroundColor Yellow 
     $Readhost = Read-Host " ( y / n ) " 
     Switch ($ReadHost) 
      { 
