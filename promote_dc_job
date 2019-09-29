@@ -1,0 +1,315 @@
+#Set unrestricted execution policy
+Set-ExecutionPolicy Unrestricted -Confirm:$false
+
+
+#Create a Stopwatch
+$stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
+
+
+## Create profile
+<#
+New-Item –Path $Profile –Type File –Force
+
+[string]$file_p  = $profile.Substring(0,39) + "test.txt"
+
+
+
+### Var
+[string]$file_lo  = $profile.Substring(0,39) + "log.txt"
+
+[string]$file_p  = $profile.Substring(0,39) + "test.txt"
+
+New-Item -ItemType file -Path $file_p 
+#>
+
+### Reaname server 
+<#
+$PlainPassword = "P@ssw0rd"
+$SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force
+$SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString | Out-File "$env:TMP\Password.txt"
+
+
+$Secure2 = Get-Content -Path "$env:TMP\Password.txt"| ConvertTo-SecureString
+
+$domname =  Get-Content -Path "$env:TMP\Dom_name.json" | ConvertFrom-Json
+
+$server_name =  Get-Content -Path "$env:TMP\servername.json" | ConvertFrom-Json
+
+$netname = Get-Content -Path "$env:TMP\netbios.json" | ConvertTo-SecureString
+
+#>
+
+workflow rename 
+{
+
+Param (
+
+    [string]$newname,
+
+    [string]$server_name,
+
+    [string]$domname,
+
+    [SecureString]$sadp,
+
+    [SecureString]$Secure2,
+
+    [string]$netname
+
+
+  )
+ 
+
+
+               inlinescript{
+                            $server_name =  Get-Content -Path "$env:TMP\servername.json" | ConvertFrom-Json
+
+
+
+                            Rename-Computer -NewName $server_name -Force -PassThru
+
+                            
+                            }
+
+                            #Create a Stopwatch
+                            $stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
+
+                            Restart-Computer -Wait
+
+               inlinescript{
+                            #$SecurePassword = Get-Content -Path "$env:TMP\Password.txt"| ConvertTo-SecureString
+
+                            #Intall Active Directory Domain service role 
+
+                            net user Administrator /passwordreq:yes
+
+                            Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools -IncludeAllSubFeature
+                            }
+                          
+                            Restart-Computer -Wait
+  <#
+                            $SecurePassword = Get-Content -Path "$env:TMP\Password.txt"| ConvertTo-SecureString
+
+                            $domname =  Get-Content -Path "$env:TMP\Dom_name.json" | ConvertFrom-Json
+
+                            $netname = Get-Content -Path "$env:TMP\netbios.json" | ConvertFrom-Json
+                            #>
+                            
+                            #New-Item -ItemType "file" -Path "$env:TEMP\InstADF.ps1" -Value '$SecurePassword = Get-Content -Path $env:TMP\Password.txt | ConvertTo-SecureString ; $domname = Get-Content -Path $env:TMP\Dom_name.json | ConvertFrom-Json ; $netname = Get-Content -Path $env:TMP\netbios.json | ConvertFrom-Json ; Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath C:\Windows\NTDS -DomainMode Default -DomainName $domname -DomainNetbiosName $netname -ForestMode Default -InstallDns:$true -LogPath C:\Windows\NTDS -NoRebootOnCompletion:$false -SafeModeAdministratorPassword $SecurePassword -SysvolPath C:\Windows\SYSVOL -Force:$true'
+              
+                          
+                            
+        inlinescript        {
+                            #powershell.exe -file "$env:TEMP\InstADF.ps1"
+
+                            powershell.exe -command $SecurePassword = Get-Content -Path $env:TMP\Password.txt | ConvertTo-SecureString ; $domname = Get-Content -Path $env:TMP\Dom_name.json | ConvertFrom-Json ; $netname = Get-Content -Path $env:TMP\netbios.json | ConvertFrom-Json ; Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath C:\Windows\NTDS -DomainMode Default -DomainName $domname -DomainNetbiosName $netname -ForestMode Default -InstallDns:$true -LogPath C:\Windows\NTDS -NoRebootOnCompletion:$false -SafeModeAdministratorPassword $SecurePassword -SysvolPath C:\Windows\SYSVOL -Force:$true
+
+                            }
+
+                  
+
+         inlinescript{
+                           $job_s = Get-Job -State Completed -Newest 1
+                           if($job_s -like "Completed")
+                           {
+
+                           Remove-Item -Path "$env:TMP\*" -Recurse
+
+                           }
+                           }
+
+      
+                            #Install-ADDSForest -DomainName $domname -CreateDNSDelegation  -SafeModeAdministratorPassword $SecurePassword -Confirm:$false
+     <#function InsADF {
+
+     $SecurePassword = Get-Content -Path "$env:TMP\Password.txt"| ConvertTo-SecureString
+
+                            $domname =  Get-Content -Path "$env:TMP\Dom_name.json" | ConvertFrom-Json
+
+                            $netname = Get-Content -Path "$env:TMP\netbios.json" | ConvertFrom-Json
+                            Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath C:\Windows\NTDS -DomainMode Default -DomainName $domname -DomainNetbiosName $netname -ForestMode Default -InstallDns:$true -LogPath C:\Windows\NTDS -NoRebootOnCompletion:$true -SafeModeAdministratorPassword $SecurePassword -SysvolPath C:\Windows\SYSVOL -Force:$true
+              }
+
+              InsADF #>
+                            }
+
+                          
+                            
+                            
+
+
+
+
+Write-host "Woul you like enter prerequesite value (Default is No)" -ForegroundColor Yellow 
+    $Readhost = Read-Host " ( y / n ) " 
+    Switch ($ReadHost) 
+     { 
+       Y {Write-host "Yes"; $dom_prom=$true} 
+       N {Write-Host "No, cancel"; $dom_prom=$false} 
+       Default {Write-Host "Default"; $dom_prom=$false} 
+     }
+
+     if($dom_prom -eq $true)
+     {
+
+ $dom_name_1 = Read-Host "Enter domain name"
+
+  $net_bios = Read-Host "Enter netbios name"
+
+   $server_name = Read-Host "New server name"
+
+     $PlainPassword = Read-Host "Enter SafeMode Administrator Password"
+
+        $SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force
+            
+            #domain name
+             $dom_name2 = $dom_name_1 | ConvertTo-Json | Out-File "$env:TMP\Dom_name.json"
+            
+                #password
+                 $SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString | Out-File "$env:TMP\Password.txt"
+
+                    #server name
+                      $server_name1 = $server_name | ConvertTo-Json | Out-File "$env:TMP\servername.json"
+
+                       #netbios name
+                        $net_bios2 = $net_bios | ConvertTo-Json | Out-File "$env:TMP\netbios.json"
+
+                        
+<#
+               $Secure2 = Get-Content -Path "$env:TMP\Password.txt"| ConvertTo-SecureString
+
+            $domname =  Get-Content -Path "$env:TMP\Dom_name.json" | ConvertFrom-Json
+         
+         $server_name =  Get-Content -Path "$env:TMP\servername.json" | ConvertFrom-Json
+         #>
+            
+
+         rename -domname $dom_name_1 -newname $server_name
+
+         Start-Sleep -Seconds 15
+
+         Write-Progress -Activity "Restart server" -SecondsRemaining 10
+
+}
+if($dom_prom -eq $false)
+{
+
+Write-host "Woul you like promote domain controller (Default is No)" -ForegroundColor Yellow 
+    $Readhost = Read-Host " ( y / n ) " 
+    Switch ($ReadHost) 
+     { 
+       Y {Write-host "Yes"; $dom_prom_1=$true} 
+       N {Write-Host "No, cancel"; $dom_prom_1=$false} 
+       Default {Write-Host "Default"; $dom_prom_1=$false} 
+     }
+
+
+if($dom_prom_1 -eq $true)
+{
+
+
+$job = Get-Job -State Suspended 
+
+if($job.state -like "Suspended")
+{
+
+Write-host "Woul you like proceed job (Default is No)" -ForegroundColor Yellow 
+    $Readhost = Read-Host " ( y / n ) " 
+    Switch ($ReadHost) 
+     { 
+       Y {Write-host "Yes, Restart server"; $job_r=$true} 
+       N {Write-Host "No, cancel"; $job_r=$false} 
+       Default {Write-Host "Default, Skip restart"; $job_r=$false} 
+
+       
+     }
+     Resume-Job -State Suspended
+     sleep -Seconds 2
+     $stopWatch.Start()
+ do
+{
+
+$rez = Get-Job -Command rename | ?{$_.State -like "Running"}
+
+[string]$rez_l = $rez.state
+
+
+Write-Progress -Activity "Job in progress" -Status "Status: $rez_l" -SecondsRemaining ($stopWatch.ElapsedMilliseconds / 1000)
+
+}while($rez_l -eq "Running")
+
+$stopWatch.Stop()
+
+     }
+     if($job.state -eq $null)
+     {
+     if($job_r -eq $true)
+     {
+
+Resume-Job -State Suspended
+
+sleep -Seconds 2
+
+$job_stat = Get-Job -State Running
+
+}
+if($job_stat.State -eq $null)
+{
+
+Write-host "Job not runned, would you like create job (Default is No)" -ForegroundColor Yellow 
+    $Readhost = Read-Host " ( y / n ) " 
+    Switch ($ReadHost) 
+     { 
+       Y {Write-host "Yes"; $job_stat_1=$true} 
+       N {Write-Host "No, cancel"; $job_stat_1=$false} 
+       Default {Write-Host "Default"; $job_stat_1=$false} 
+     }
+            if($job_stat_1 -eq $true)
+                    {
+
+                    $dom_name_1 = Read-Host "Enter domain name"
+
+                                $server_name = Read-Host "New server name"
+
+                                            
+
+         #domain nam
+             $dom_name2 = $dom_name_1 | ConvertTo-Json | Out-File "$env:TMP\Dom_name.json"
+            
+                
+
+                    #server name
+                      $server_name1 = $server_name | ConvertTo-Json | Out-File "$env:TMP\servername.json"
+
+                        rename -server_name $server_name -domname $server_name
+
+
+                        $stopWatch.Start()
+ do
+{
+
+$rez = Get-Job -Command rename | ?{$_.State -like "Running"}
+
+[string]$rez_l = $rez.state
+
+
+Write-Progress -Activity "Job in progress" -Status "Status: $rez_l" -SecondsRemaining ($stopWatch.ElapsedMilliseconds / 1000)
+
+}while($rez_l -eq "Running")
+
+$stopWatch.Stop()
+
+
+                    }
+
+}
+
+}       
+else
+{
+
+break
+
+}
+}
+}
